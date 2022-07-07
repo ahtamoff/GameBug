@@ -1,5 +1,7 @@
 from django.http import HttpResponse, HttpResponseNotFound, Http404
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+
+from .forms import AddPostForm
 from .models import *
 
 menu = [{'title': 'О сайте', 'url_name':'about'},
@@ -10,21 +12,61 @@ menu = [{'title': 'О сайте', 'url_name':'about'},
 
 def index(request):
     posts = Bug.objects.all()
-    return render(request, 'bug/index.html', {'posts': posts, 'menu': menu, 'title': 'Главная странциа'})
+
+    context = {
+        'posts': posts,
+        'menu': menu,
+        'title': 'Главная страница',
+        'cat_selected': 0,
+    }
+    return render(request, 'bug/index.html', context=context)
 
 def about(request):
     return render(request, 'bug/about.html', {'menu': menu, 'title': 'О сайте'})
 
-def categories(request, catid):
-    if(request.POST):
-        print(request.POST)
-    return HttpResponse(f'<h1>Статьи по категориям</h1><p>{catid}</p>')
+def addpage(request):
+    if request.method == 'POST':
+        form = AddPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            #print(form.cleaned_data)
+            form.save()
+            return redirect('home')
+    else:
+        form = AddPostForm()
+    return render(request, 'bug/addpage.html', {'form': form, 'menu': menu, 'title': 'Добавление статьи'})
 
-def archive (request,year):
-    if int(year) > 2022:
-        return redirect('home')
+def contact(request):
+    return HttpResponse('Обратная связь')
 
-    return HttpResponse(f'<h1>Архив по играм</h1><p>{year}</p>')
+def login(request):
+    return HttpResponse('Авторизация')
 
 def pageNotFound(request, exception):
     return HttpResponseNotFound('<h1>Страница не найдена</h1>')
+
+def show_post(request, post_slug):
+    post = get_object_or_404(Bug, slug=post_slug)
+
+    context = {
+        'post': post,
+        'menu': menu,
+        'title': post.title,
+        'cat_selected': post.cat_id,
+    }
+
+    return render(request, 'bug/post.html', context=context)
+
+
+def show_category(request, cat_id):
+    posts = Bug.objects.filter(cat_id=cat_id)
+
+    if len(posts) == 0:
+        raise Http404()
+
+    context = {
+        'posts': posts,
+        'menu': menu,
+        'title': 'Отображение по рубрикам',
+        'cat_selected': cat_id,
+    }
+    return render(request, 'bug/index.html', context=context)
